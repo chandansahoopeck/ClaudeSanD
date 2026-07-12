@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pipeline Schematic — CI/CD Field Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0b2438;
+    --bg-deep: #081a29;
+    --surface: #0f2f49;
+    --surface-2: #133a5b;
+    --line: rgba(190, 224, 245, 0.14);
+    --line-strong: rgba(190, 224, 245, 0.28);
+    --ink: #eaf4fb;
+    --muted: #8db2cc;
+    --muted-dim: #5f829e;
+    --accent: #5fd0e0;
+    --accent-dim: rgba(95, 208, 224, 0.16);
+    --good: #7fd9a6;
+    --good-dim: rgba(127, 217, 166, 0.12);
+    --bad: #f0847a;
+    --bad-dim: rgba(240, 132, 122, 0.12);
+    --warn: #f0bd63;
+    --warn-dim: rgba(240, 189, 99, 0.12);
+    --grid: rgba(160, 200, 230, 0.055);
+    --radius: 10px;
+    --display: 'Space Grotesk', sans-serif;
+    --body: 'IBM Plex Sans', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+
+  body{
+    margin:0;
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 100% 42px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 42px 100%,
+      radial-gradient(ellipse 1200px 700px at 15% -10%, rgba(95,208,224,0.09), transparent),
+      var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    line-height: 1.6;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation: none !important; transition: none !important; }
+    html{ scroll-behavior: auto; }
+  }
+
+  ::selection{ background: var(--accent-dim); color: var(--ink); }
+
+  a{ color: var(--accent); }
+  a:focus-visible, button:focus-visible, .navdot:focus-visible{
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  h1,h2,h3,h4{ font-family: var(--display); font-weight: 600; margin: 0; color: var(--ink); }
+
+  .eyebrow{
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .eyebrow::before{
+    content:"";
+    width: 22px; height: 1px;
+    background: var(--accent);
+    display: inline-block;
+  }
+
+  .wrap{ max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+
+  /* ---------- RAIL NAV ---------- */
+  .rail{
+    position: fixed;
+    left: 26px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .rail-line{
+    position: absolute;
+    left: 50%; top: 0; bottom:0;
+    width: 1px;
+    background: var(--line);
+    transform: translateX(-50%);
+    z-index: -1;
+  }
+  .rail-fill{
+    position: absolute;
+    left: 50%; top:0; width: 2px;
+    background: linear-gradient(var(--accent), transparent);
+    transform: translateX(-50%);
+    z-index: -1;
+    transition: height .25s ease;
+  }
+  .navdot{
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    border: 1px solid var(--muted-dim);
+    background: var(--bg-deep);
+    margin: 15px 0;
+    cursor: pointer;
+    position: relative;
+    display:block;
+    padding:0;
+    transition: all .25s ease;
+  }
+  .navdot .tip{
+    position:absolute;
+    left: 22px; top:50%; transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .04em;
+    color: var(--muted);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity .2s ease;
+    pointer-events:none;
+  }
+  .navdot:hover .tip{ opacity: 1; }
+  .navdot.active{
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-dim);
+  }
+  .navdot.active .tip{ opacity: 1; color: var(--ink); }
+  @media (max-width: 980px){ .rail{ display:none; } }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    padding: 110px 0 70px;
+    position: relative;
+  }
+  .hero .kicker{
+    font-family: var(--mono);
+    color: var(--muted);
+    font-size: 13px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .hero h1{
+    font-size: clamp(2.4rem, 5vw, 4rem);
+    line-height: 1.04;
+    margin: 18px 0 22px;
+    letter-spacing: -0.01em;
+  }
+  .hero h1 em{
+    font-style: normal;
+    color: var(--accent);
+    position: relative;
+  }
+  .hero p.lead{
+    max-width: 640px;
+    color: var(--muted);
+    font-size: 1.08rem;
+  }
+
+  /* schematic pipeline in hero */
+  .schematic{
+    margin-top: 56px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .schematic svg{ display:block; min-width: 900px; width: 100%; height: auto; }
+  .snode{ font-family: var(--mono); font-size: 11px; fill: var(--muted); }
+  .snode-title{ font-family: var(--display); font-size: 13px; fill: var(--ink); font-weight: 600;}
+  .sline{ stroke: var(--line-strong); stroke-width: 1.4; fill:none; }
+  .sflow{
+    stroke: var(--accent);
+    stroke-width: 2;
+    fill:none;
+    stroke-dasharray: 6 8;
+    animation: dash 14s linear infinite;
+  }
+  @keyframes dash{ to{ stroke-dashoffset: -400; } }
+  .sdot{ fill: var(--bg-deep); stroke: var(--line-strong); stroke-width: 1.4; }
+  .sdot.live{ stroke: var(--accent); fill: var(--accent-dim); }
+
+  /* ---------- SECTIONS ---------- */
+  section.stage{
+    padding: 84px 0;
+    border-top: 1px solid var(--line);
+    position: relative;
+  }
+  section.stage:first-of-type{ border-top: none; }
+
+  .stage-head{
+    display:flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 24px;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+  }
+  .stage-head h2{ font-size: clamp(1.6rem, 3vw, 2.3rem); max-width: 640px; }
+  .stage-num{
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted-dim);
+    white-space: nowrap;
+  }
+  .dek{ color: var(--muted); max-width: 720px; margin-top: 14px; font-size: 1rem;}
+
+  /* flow row */
+  .flowrow{
+    display:flex;
+    align-items:stretch;
+    gap: 0;
+    overflow-x:auto;
+    margin: 34px 0 44px;
+    padding-bottom: 10px;
+  }
+  .fnode{
+    flex: 0 0 auto;
+    min-width: 148px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 16px;
+    position: relative;
+  }
+  .fnode .flabel{
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--accent);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    display:block;
+    margin-bottom: 6px;
+  }
+  .fnode .fname{ font-size: 14px; font-weight: 500; color: var(--ink); }
+  .fnode.hot{ border-color: rgba(95,208,224,0.35); background: linear-gradient(180deg, var(--accent-dim), var(--surface)); }
+  .farrow{
+    flex: 0 0 34px;
+    display:flex; align-items:center; justify-content:center;
+    color: var(--muted-dim);
+    font-size: 18px;
+  }
+
+  /* chips */
+  .chiprow{ display:flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 40px; }
+  .chip{
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 6px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    color: var(--muted);
+    background: var(--surface);
+  }
+
+  /* pros/cons/usecases grid */
+  .triad{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 40px;
+  }
+  @media (max-width: 860px){ .triad{ grid-template-columns: 1fr; } }
+  .card{
+    border-radius: var(--radius);
+    padding: 20px 20px 22px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .card h4{
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .card.pros{ border-color: rgba(127,217,166,0.28); background: linear-gradient(180deg, var(--good-dim), var(--surface) 40%);}
+  .card.pros h4{ color: var(--good); }
+  .card.cons{ border-color: rgba(240,132,122,0.28); background: linear-gradient(180deg, var(--bad-dim), var(--surface) 40%);}
+  .card.cons h4{ color: var(--bad); }
+  .card.uses{ border-color: rgba(190,224,245,0.2); }
+  .card.uses h4{ color: var(--muted); }
+  .card ul{ margin:0; padding-left: 18px; }
+  .card li{ margin-bottom: 9px; font-size: 14.5px; }
+  .card li::marker{ color: var(--muted-dim); }
+
+  /* callouts */
+  .callout{
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    margin-bottom: 22px;
+    border: 1px solid;
+    display:flex;
+    gap: 16px;
+  }
+  .callout .mark{
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    padding-top: 2px;
+  }
+  .callout.great{ border-color: rgba(127,217,166,0.35); background: var(--good-dim); }
+  .callout.great .mark{ color: var(--good); }
+  .callout.improve{ border-color: rgba(240,189,99,0.35); background: var(--warn-dim); }
+  .callout.improve .mark{ color: var(--warn); }
+  .callout p{ margin:0; font-size: 14.5px; color: var(--ink); }
+  .callout strong{ color: var(--ink); }
+
+  /* code */
+  .codepanel{
+    background: var(--bg-deep);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 20px 0 36px;
+  }
+  .codepanel .codebar{
+    display:flex; align-items:center; justify-content: space-between;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    letter-spacing: .04em;
+  }
+  .codepanel .codebar .dots{ display:flex; gap:6px; }
+  .codepanel .codebar .dots span{ width:8px; height:8px; border-radius:50%; background: var(--line-strong); display:inline-block;}
+  .codepanel pre{
+    margin:0;
+    padding: 18px 20px 20px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.65;
+    color: #c8dcec;
+  }
+  .codepanel code .c1{ color: var(--muted-dim); font-style: italic; } /* comment */
+  .codepanel code .k1{ color: var(--accent); }   /* keyword */
+  .codepanel code .s1{ color: var(--good); }     /* string */
+  .codepanel code .v1{ color: var(--warn); }     /* var */
+  .code-diff-row{ display:grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 860px){ .code-diff-row{ grid-template-columns: 1fr; } }
+  .diffhead{ font-family: var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:8px; }
+  .diffhead.before{ color: var(--bad); }
+  .diffhead.after{ color: var(--good); }
+
+  /* patterns table */
+  .ptable{ width:100%; border-collapse: collapse; margin: 10px 0 40px; }
+  .ptable th, .ptable td{
+    text-align:left;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    font-size: 14.5px;
+    vertical-align: top;
+  }
+  .ptable th{ font-family: var(--mono); font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color: var(--muted); font-weight:500;}
+  .ptable td.name{ color: var(--accent); font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+
+  /* roadmap */
+  .roadmap{ display:flex; flex-direction: column; gap: 0; margin-top: 12px; }
+  .rstep{
+    display:grid;
+    grid-template-columns: 56px 1fr;
+    gap: 20px;
+    padding: 22px 0;
+    border-top: 1px solid var(--line);
+  }
+  .rstep:first-child{ border-top:none; }
+  .rstep .rn{
+    font-family: var(--display);
+    font-size: 22px;
+    color: var(--muted-dim);
+  }
+  .rstep h4{ font-size: 16px; margin-bottom: 6px; }
+  .rstep p{ margin:0; color: var(--muted); font-size: 14.5px; max-width: 680px;}
+  .rstep .rtag{
+    font-family: var(--mono); font-size: 10.5px; letter-spacing:.06em; text-transform:uppercase;
+    padding: 3px 9px; border-radius: 999px; margin-left:10px; display:inline-block; position:relative; top:-2px;
+  }
+  .rtag.p1{ background: var(--bad-dim); color: var(--bad); }
+  .rtag.p2{ background: var(--warn-dim); color: var(--warn); }
+  .rtag.p3{ background: var(--good-dim); color: var(--good); }
+
+  footer{
+    padding: 60px 0 90px;
+    border-top: 1px solid var(--line);
+    color: var(--muted-dim);
+    font-family: var(--mono);
+    font-size: 12.5px;
+  }
+</style>
+</head>
+<body>
+
+<nav class="rail" aria-label="Section navigation">
+  <div class="rail-line"></div>
+  <div class="rail-fill" id="railFill"></div>
+  <button class="navdot" data-target="#overview"><span class="tip">Overview</span></button>
+  <button class="navdot" data-target="#branching"><span class="tip">Branching</span></button>
+  <button class="navdot" data-target="#ci"><span class="tip">CI Validation</span></button>
+  <button class="navdot" data-target="#envvars"><span class="tip">Env Config</span></button>
+  <button class="navdot" data-target="#review"><span class="tip">Review &amp; Merge</span></button>
+  <button class="navdot" data-target="#cd"><span class="tip">CD Deploy</span></button>
+  <button class="navdot" data-target="#security"><span class="tip">Security</span></button>
+  <button class="navdot" data-target="#patterns"><span class="tip">Patterns</span></button>
+  <button class="navdot" data-target="#roadmap"><span class="tip">Roadmap</span></button>
+</nav>
+
+<header class="hero wrap">
+  <div class="kicker">Field guide — on-prem CI/CD · Jenkins → Bitbucket → Artifactory → Kubernetes</div>
+  <h1>Every stage of the pipeline,<br>drawn to <em>scale</em>.</h1>
+  <p class="lead">A working reference for how code moves from a feature branch to a running pod: the flow, the patterns underneath it, what's genuinely solid, what's fragile, and the exact lines of config worth rewriting.</p>
+
+  <div class="schematic" aria-hidden="true">
+    <svg viewBox="0 0 1080 190" xmlns="http://www.w3.org/2000/svg">
+      <!-- baseline -->
+      <line x1="40" y1="95" x2="1040" y2="95" class="sline"/>
+      <line x1="40" y1="95" x2="1040" y2="95" class="sflow"/>
+      <!-- nodes -->
+      <g>
+        <circle cx="60" cy="95" r="7" class="sdot live"/>
+        <text x="60" y="70" text-anchor="middle" class="snode-title">Feature</text>
+        <text x="60" y="128" text-anchor="middle" class="snode">branch</text>
+      </g>
+      <g>
+        <circle cx="230" cy="95" r="7" class="sdot"/>
+        <text x="230" y="70" text-anchor="middle" class="snode-title">PR opened</text>
+        <text x="230" y="128" text-anchor="middle" class="snode">bitbucket</text>
+      </g>
+      <g>
+        <circle cx="400" cy="95" r="7" class="sdot"/>
+        <text x="400" y="70" text-anchor="middle" class="snode-title">CI validate</text>
+        <text x="400" y="128" text-anchor="middle" class="snode">lint · test · build</text>
+      </g>
+      <g>
+        <circle cx="560" cy="95" r="7" class="sdot"/>
+        <text x="560" y="70" text-anchor="middle" class="snode-title">Review</text>
+        <text x="560" y="128" text-anchor="middle" class="snode">1+ approval</text>
+      </g>
+      <g>
+        <circle cx="710" cy="95" r="7" class="sdot"/>
+        <text x="710" y="70" text-anchor="middle" class="snode-title">Merge → build</text>
+        <text x="710" y="128" text-anchor="middle" class="snode">push image</text>
+      </g>
+      <g>
+        <circle cx="860" cy="95" r="7" class="sdot"/>
+        <text x="860" y="70" text-anchor="middle" class="snode-title">Artifactory</text>
+        <text x="860" y="128" text-anchor="middle" class="snode">immutable tag</text>
+      </g>
+      <g>
+        <circle cx="1000" cy="95" r="8" class="sdot live"/>
+        <text x="1000" y="70" text-anchor="middle" class="snode-title">CD deploy</text>
+        <text x="1000" y="128" text-anchor="middle" class="snode">kubectl · k8s</text>
+      </g>
+    </svg>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- OVERVIEW -->
+  <section class="stage" id="overview">
+    <div class="stage-head">
+      <div>
+        <div class="eyebrow">Stage 00 · The shape of the system</div>
+        <h2>Two job types, chained, not one pipeline</h2>
+        <p class="dek">Every service runs on two separate Jenkins jobs: a Multibranch Pipeline that validates and publishes, and a Freestyle job that deploys. They're connected by a Jenkins upstream trigger, not a single unified Jenkinsfile — worth naming, because it shapes almost every trade-off below.</p>
+      </div>
+      <div class="stage-num">00 / 08</div>
+    </div>
+
+    <div class="flowrow">
+      <div class="fnode hot"><span class="flabel">Job A</span><span class="fname">Multibranch Pipeline</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="flabel">trigger</span><span class="fname">build after upstream stable</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode hot"><span class="flabel">Job B</span><span class="fname">Freestyle CD job</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="flabel">target</span><span class="fname">on-prem Kubernetes</span></div>
+    </div>
+
+    <div class="chiprow">
+      <span class="chip">Jenkins</span>
+      <span class="chip">Bitbucket</span>
+      <span class="chip">JFrog Artifactory</span>
+      <span class="chip">Docker</span>
+      <span class="chip">Kubernetes (on-prem)</span>
+      <span class="chip">Job-chaining trigger</span>
+      <span class="chip">Freestyle, not Jenkinsfile, for CD</span>
+    </div>
+
+    <div class="callout great">
+      <div class="mark">Done well</div>
+      <p>Clean separation of concerns between "did the code pass" and "is it deployed." A CI failure can never accidentally trigger a deploy, because the CD job only fires on a <strong>stable</strong> upstream build.</p>
+    </div>
+    <div class="callout improve">
+      <div class="mark">Worth fixing</div>
+      <p>Because CD lives in a Freestyle job instead of a Jenkinsfile, its logic isn't versioned in git the way CI's is. Every environment's deploy job is a hand-edited copy of the last one — see <a href="#envvars">Env Config</a>.</p>
+    </div>
+  </section>
+
+  <!-- BRANCHING -->
+  <section class="stage" id="branching">
+    <div class="stage-head">
+      <div>
+        <div class="eyebrow">Stage 01 · Source control</div>
+        <h2>Branching &amp; protection rules</h2>
+        <p class="dek">A GitFlow-lite model: short-lived feature branches merge into a protected <code>develop</code>, which promotes to a protected <code>release</code>. Nothing lands without review.</p>
+      </div>
+      <div class="stage-num">01 / 08</div>
+    </div>
+
+    <div class="flowrow">
+      <div class="fnode"><span class="flabel">work</span><span class="fname">feature/*</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="flabel">bugfix</span><span class="fname">bugfix/*</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode hot"><span class="flabel">integration</span><span class="fname">develop</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode hot"><span class="flabel">production-track</span><span class="fname">release</span></div>
+    </div>
+
+    <div class="triad">
+      <div class="card pros">
+        <h4>Pros</h4>
+        <ul>
+          <li>Feature isolation keeps in-flight work from blocking others — dozens of concurrent branches coexist cleanly.</li>
+          <li>Protected <code>develop</code>/<code>release</code> means the deploy targets are never touched by a stray direct push.</li>
+          <li>A single required approval keeps velocity high for a small team.</li>
+        </ul>
+      </div>
+      <div class="card cons">
+        <h4>Cons</h4>
+        <ul>
+          <li>No documented hotfix path distinct from <code>bugfix/*</code> — unclear how an urgent prod fix skips the queue.</li>
+          <li>Named approvers (not a role/group) create a two-person bus factor on every merge.</li>
+          <li>Long-lived feature branches drift further from <code>develop</code> the longer review takes.</li>
+        </ul>
+      </div>
+      <div class="card uses">
+        <h4>Use cases this fits</h4>
+        <ul>
+          <li>Small, trusted team shipping multiple services in parallel.</li>
+          <li>Environments where every change needs an audit trail for compliance.</li>
+          <li>Teams that deploy dev/test continuously but gate prod manually.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- CI -->
+  <section class="stage" id="ci">
+    <div class="stage-head">
+      <div>
+        <div class="eyebrow">Stage 02 · Continuous Integration</div>
+        <h2>PR validation — same pipeline, branch-conditional behavior</h2>
+        <p class="dek">One Jenkinsfile runs on every branch a Multibranch Pipeline discovers. On a PR branch it validates only; on <code>develop</code>, the same stages actually publish the image. It's one pipeline wearing two hats, not two separate pipelines.</p>
+      </div>
+      <div class="stage-num">02 / 08</div>
+    </div>
+
+    <div class="flowrow">
+      <div class="fnode"><span class="flabel">01</span><span class="fname">Checkout SCM</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="flabel">02</span><span class="fname">Lint changed files</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="flabel">03</span><span class="fname">Unit tests</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode hot"><span class="flabel">04</span><span class="fname">Docker build</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="flabel">05</span><span class="fname">Smoke tests</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="flabel">06 · develop only</span><span class="fname">Push to Artifactory</span></div>
+    </div>
+
+    <div class="chiprow">
+      <span class="chip">Trigger: PR created / branch push</span>
+      <span class="chip">Validation-only on PR branches</span>
+      <span class="chip">Publish-on-merge via same Jenkinsfile</span>
+      <span class="chip">Avg run ≈ 1m 18s (agent-mail-service/develop)</span>
+    </div>
+
+    <div class="codepanel">
+      <div class="codebar"><span>Jenkinsfile — declarative, shape observed in Blue Ocean stage view</span><div class="dots"><span></span><span></span><span></span></div></div>
+      <pre><code><span class="c1">// Same file runs for both PR branches and develop —</span>
+<span class="c1">// stage behavior branches on env.BRANCH_NAME</span>
+<span class="k1">pipeline</span> {
+  <span class="k1">agent</span> any
+  <span class="k1">stages</span> {
+    <span class="k1">stage</span>(<span class="s1">'Checkout SCM'</span>) { <span class="k1">steps</span> { checkout scm } }
+
+    <span class="k1">stage</span>(<span class="s1">'Lint'</span>) {
+      <span class="k1">steps</span> { sh <span class="s1">'flake8 --diff $(git diff --name-only origin/develop...)'</span> }
+    }
+
+    <span class="k1">stage</span>(<span class="s1">'Unit Tests'</span>) { <span class="k1">steps</span> { sh <span class="s1">'pytest -q'</span> } }
+
+    <span class="k1">stage</span>(<span class="s1">'Docker Build'</span>) {
+      <span class="k1">steps</span> { sh <span class="s1">'docker build -t $APP_NAME:$BUILD_NUMBER .'</span> }
+    }
+
+    <span class="k1">stage</span>(<span class="s1">'Smoke Test'</span>) { <span class="k1">steps</span> { sh <span class="s1">'./scripts/smoke.sh'</span> } }
+
+    <span class="k1">stage</span>(<span class="s1">'Push to Artifactory'</span>) {
+      <span class="k1">when</span> { branch <span class="s1">'develop'</span> }  <span class="c1">// ← the branch-conditional hinge</span>
+      <span class="k1">steps</span> { sh <span class="s1">'docker push $ARTIFACTORY/$APP_NAME:$BUILD_NUMBER'</span> }
+    }
+  }
+}</code></pre>
+    </div>
+
+    <div class="triad">
+      <div class="card pros">
+        <h4>Pros</h4>
+        <ul>
+          <li>One source of truth for build logic — no drift between "how PR builds work" and "how the real image gets built."</li>
+          <li>Docker image built during PR validation never gets published, so a broken PR can't pollute Artifactory.</li>
+          <li>Multibranch auto-discovery means new feature branches get CI for free, no manual job setup.</li>
+        </ul>
+      </div>
+      <div class="card cons">
+        <h4>Cons</h4>
+        <ul>
+          <li>The branch-conditional publish step is implicit — easy to misread the docs as "three separate pipelines" (they aren't).</li>
+          <li>No visible integration/contract test stage between unit tests and smoke tests.</li>
+          <li>Smoke tests run against a locally built image, not the pushed one — a rebuild step in between could theoretically diverge.</li>
+        </ul>
+      </div>
+      <div class="card uses">
+        <h4>Use cases this fits</h4>
+        <ul>
+          <li>Services with a single deployable artifact per repo.</li>
+          <li>Teams wanting fast PR feedback without provisioning separate validation infra.</li>
+          <li>Any repo where "tested" and "published" must never be the same event.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout great">
+      <div class="mark">Done well</div>
+      <p>Reusing one Jenkinsfile across PR and merge events is the right instinct — it's the reason your Docker image and your tested code can never disagree with each other.</p>
+    </div>
+  </section>
+
+  <!-- ENV VARS -->
+  <section class="stage" id="envvars">
+    <div class="stage-head">
+      <div>
+        <div class="eyebrow">Stage 03 · Configuration</div>
+        <h2>Environment config — the real gap between doc and disk</h2>
+        <p class="dek">The design intent is dynamic resolution per environment. What's actually running is a hardcoded block at the top of each Freestyle CD job's shell step — one job per environment, values duplicated by hand.</p>
+      </div>
+      <div class="stage-num">03 / 08</div>
+    </div>
+
+    <div class="code-diff-row">
+      <div>
+        <div class="diffhead before">As it runs today — hardcoded per job</div>
+        <div class="codepanel">
+          <div class="codebar"><span>agent-mail-service-dev-deployment-onmerge</span><div class="dots"><span></span><span></span><span></span></div></div>
+          <pre><code><span class="c1"># ============================</span>
+<span class="c1"># Hard-coded configuration</span>
+<span class="c1"># ============================</span>
+<span class="v1">app_name</span>=<span class="s1">"agent-mail-service"</span>
+<span class="v1">target_build_env</span>=<span class="s1">"dev"</span>
+<span class="v1">kubectl_namespace</span>=<span class="s1">"it-ex-automation-dev"</span>
+<span class="v1">kubectl_context</span>=<span class="s1">"svc-GSS-RPA-flash1.kube-dev"</span></code></pre>
+        </div>
+      </div>
+      <div>
+        <div class="diffhead after">Proposed — one job, config resolved by lookup</div>
+        <div class="codepanel">
+          <div class="codebar"><span>envs.yaml + one parameterized job</span><div class="dots"><span></span><span></span><span></span></div></div>
+          <pre><code><span class="c1"># envs.yaml — checked into the repo, diffable, reviewable</span>
+dev:
+  <span class="v1">namespace</span>: it-ex-automation-dev
+  <span class="v1">context</span>: svc-GSS-RPA-flash1.kube-dev
+test:
+  <span class="v1">namespace</span>: it-ex-automation-test
+  <span class="v1">context</span>: svc-GSS-RPA-flash1.kube-test
+
+<span class="c1"># build step becomes:</span>
+cfg=$(yq <span class="s1">".${TARGET_ENV}"</span> envs.yaml)
+python -m scripts.deploy_to_k8s \
+  --app <span class="s1">"$APP_NAME"</span> --env <span class="s1">"$TARGET_ENV"</span> \
+  --namespace <span class="s1">"$(echo "$cfg" | yq .namespace)"</span> \
+  --context   <span class="s1">"$(echo "$cfg" | yq .context)"</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="chiprow">
+      <span class="chip">One Freestyle job per service per environment</span>
+      <span class="chip">Fresh venv every run</span>
+      <span class="chip">requirements.txt installed on every build</span>
+      <span class="chip">deploy_to_k8s.py does the actual kubectl work</span>
+    </div>
+
+    <div class="triad">
+      <div class="card pros">
+        <h4>Pros</h4>
+        <ul>
+          <li>Dead simple to read — anyone can open the job and see exactly what it'll deploy where.</li>
+          <li>Ephemeral venv per run means no dependency drift between builds.</li>
+          <li>Isolation: one env's job can't accidentally deploy to another namespace by config-merge error.</li>
+        </ul>
+      </div>
+      <div class="card cons">
+        <h4>Cons</h4>
+        <ul>
+          <li>Adding an environment means copy-pasting a Jenkins job and hand-editing four strings — no compiler or reviewer catches a typo.</li>
+          <li>No single source of truth for namespace/context naming — a naming-convention change means editing N jobs.</li>
+          <li>Config isn't in git, so there's no diff/blame history for "when did dev's namespace change."</li>
+        </ul>
+      </div>
+      <div class="card uses">
+        <h4>Use cases this fits</h4>
+        <ul>
+          <li>A small, fixed number of environments (dev/test/prod) that rarely change shape.</li>
+          <li>Teams prioritizing "can read the job and know exactly what happens" over DRY-ness.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout improve">
+      <div class="mark">Highest-priority fix</div>
+      <p>Of everything in this guide, this is the one worth doing first: it's low-risk (the deploy script itself doesn't change, only where its inputs come from) and it removes the most realistic failure mode — a hand-edit typo in a rarely-touched job.</p>
+    </div>
+  </section>
+
+  <!-- REVIEW -->
+  <section class="stage" id="review">
+    <div class="stage-head">
+      <div>
+        <div class="eyebrow">Stage 04 · Governance</div>
+        <h2>Code review, approval, and the post-merge build</h2>
+        <p class="dek">Review checks business logic, standards, performance, and security. Once merged, the full codebase is linted and the image is built and pushed — no tests re-run, since they already ran on the PR.</p>
+      </div>
+      <div class="stage-num">04 / 08</div>
+    </div>
+
+    <div class="flowrow">
+      <div class="fnode"><span class="flabel">gate</span><span class="fname">1+ approval required</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="flabel">merge</span><span class="fname">develop / release</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="flabel">full lint</span><span class="fname">whole codebase</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode hot"><span class="flabel">publish</span><span class="fname">image → Artifactory</span></div>
+    </div>
+
+    <div class="triad">
+      <div class="card pros">
+        <h4>Pros</h4>
+        <ul>
+          <li>No redundant test run post-merge — saves pipeline minutes on every merge.</li>
+          <li>Full-codebase lint on merge catches issues a diff-only PR lint might miss.</li>
+          <li>Named reviewers means accountability is unambiguous.</li>
+        </ul>
+      </div>
+      <div class="card cons">
+        <h4>Cons</h4>
+        <ul>
+          <li>Skipping tests post-merge assumes merge is always fast-forward — a rebase-with-conflicts merge could theoretically ship untested code.</li>
+          <li>No automated check that the merged branch is still green against latest <code>develop</code> before publish.</li>
+        </ul>
+      </div>
+      <div class="card uses">
+        <h4>Use cases this fits</h4>
+        <ul>
+          <li>Teams merging frequently in small increments, where fast-forward merges are the norm.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- CD -->
+  <section class="stage" id="cd">
+    <div class="stage-head">
+      <div>
+        <div class="eyebrow">Stage 05 · Continuous Deployment</div>
+        <h2>The Freestyle CD job, step by step</h2>
+        <p class="dek">Triggered only after the upstream CI job reports stable. Workspace is wiped, a fresh Python venv is built, and a deploy script drives <code>kubectl</code> against the resolved namespace/context.</p>
+      </div>
+      <div class="stage-num">05 / 08</div>
+    </div>
+
+    <div class="flowrow">
+      <div class="fnode"><span class="flabel">trigger</span><span class="fname">upstream job stable</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="flabel">env setup</span><span class="fname">wipe workspace</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="flabel">venv</span><span class="fname">python3 -m venv .venv</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode hot"><span class="flabel">deploy</span><span class="fname">deploy_to_k8s.py</span></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><span class="flabel">notify</span><span class="fname">HTML email</span></div>
+    </div>
+
+    <div class="codepanel">
+      <div class="codebar"><span>Build Steps — Freestyle shell block</span><div class="dots"><span></span><span></span><span></span></div></div>
+      <pre><code><span class="k1">set</span> -e  <span class="c1"># fail fast</span>
+
+echo <span class="s1">"=== Creating virtualenv ==="</span>
+python3 -m venv .venv
+
+echo <span class="s1">"=== Activating virtualenv ==="</span>
+. .venv/bin/activate
+
+echo <span class="s1">"=== Installing dependencies from requirements.txt ==="</span>
+pip install --upgrade pip
+pip install -r requirements.txt
+
+echo <span class="s1">"=== Running deploy script for app ${app_name} on env ${target_build_env} ==="</span>
+python -m scripts.deploy_to_k8s \
+  --app <span class="v1">"$app_name"</span> \
+  --env <span class="v1">"$target_build_env"</span> \
+  --namespace <span class="v1">"$kubectl_namespace"</span> \
+  --context <span class="v1">"$kubectl_context"</span>
+
+echo <span class="s1">"=== Deactivating virtualenv ==="</span>
+deactivate
+echo <span class="s1">"=== Build step finished OK ==="</span></code></pre>
+    </div>
+
+    <div class="triad">
+      <div class="card pros">
+        <h4>Pros</h4>
+        <ul>
+          <li><code>set -e</code> plus a fresh venv/workspace every run means no silent partial-failure or stale-dependency deploys.</li>
+          <li>"Trigger only if build is stable" is exactly the right gate — a red CI build can never cascade into a bad deploy.</li>
+          <li>HTML email notification on every deploy gives on-call visibility without opening Jenkins.</li>
+        </ul>
+      </div>
+      <div class="card cons">
+        <h4>Cons</h4>
+        <ul>
+          <li>"Success" means the script exited 0 — nothing here confirms the pod actually reached <code>Ready</code> post-deploy.</li>
+          <li>Freestyle job logic isn't code-reviewed the way a Jenkinsfile change would be; it lives only in Jenkins' own config history.</li>
+          <li>Credential handling for the Artifactory/kubectl secrets isn't visible in the build step — worth an explicit audit (see <a href="#security">Security</a>).</li>
+        </ul>
+      </div>
+      <div class="card uses">
+        <h4>Use cases this fits</h4>
+        <ul>
+          <li>Small number of services where a Python deploy script wrapping <code>kubectl</code> is simpler than adopting a full GitOps tool.</li>
+          <li>Environments where "who deployed what, when" via email is sufficient audit trail.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout improve">
+      <div class="mark">Worth adding</div>
+      <p>A post-deploy health check — <code>kubectl rollout status deployment/$APP_NAME -n $NAMESPACE --timeout=120s</code> — as the last build step, so "green" in Jenkins actually means "serving traffic," not just "script didn't crash."</p>
+    </div>
+  </section>
+
+  <!-- SECURITY -->
+  <section class="stage" id="security">
+    <div class="stage-head">
+      <div>
+        <div class="eyebrow">Stage 06 · Security &amp; governance</div>
+        <h2>What's enforced, and what to verify</h2>
+        <p class="dek">Branch protection and artifact immutability are structurally enforced. Credential handling is the one area the docs describe well but the running config doesn't visibly confirm.</p>
+      </div>
+      <div class="stage-num">06 / 08</div>
+    </div>
+
+    <div class="triad">
+      <div class="card pros">
+        <h4>Enforced today</h4>
+        <ul>
+          <li>Mandatory PR review on protected branches — no direct commits.</li>
+          <li>Artifact immutability via Artifactory once pushed.</li>
+          <li>Manual approval gate before any production deployment.</li>
+        </ul>
+      </div>
+      <div class="card cons">
+        <h4>Unverified from the config</h4>
+        <ul>
+          <li>Whether the Artifactory/kubectl credentials are bound via Jenkins Credentials Manager (<code>withCredentials</code>) or sit as a plaintext var.</li>
+          <li>Whether build logs ever echo a secret value — easy to introduce accidentally with <code>set -x</code> or a stray <code>echo $PASSWORD</code>.</li>
+        </ul>
+      </div>
+      <div class="card uses">
+        <h4>Quick audit checklist</h4>
+        <ul>
+          <li>Grep Freestyle job configs for any credential referenced by literal value, not by ID.</li>
+          <li>Confirm Jenkins "Mask Passwords" plugin (or equivalent) is active on CD jobs.</li>
+          <li>Rotate the Artifactory service account password once the audit is done, regardless of outcome.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-diff-row">
+      <div>
+        <div class="diffhead before">Risk pattern to check for</div>
+        <div class="codepanel">
+          <pre><code>kubectl create secret docker-registry svc-secret \
+  --docker-password=<span class="v1">MyActualPassword123</span> \  <span class="c1"># ← literal value in job config</span>
+  --namespace=it-ex-automation-dev</code></pre>
+        </div>
+      </div>
+      <div>
+        <div class="diffhead after">What it should look like</div>
+        <div class="codepanel">
+          <pre><code><span class="k1">withCredentials</span>([<span class="k1">string</span>(
+  <span class="v1">credentialsId</span>: <span class="s1">'artifactory-svc-password'</span>,
+  <span class="v1">variable</span>: <span class="s1">'ARTIFACTORY_PASSWORD'</span>)]) {
+  sh <span class="s1">'kubectl create secret docker-registry svc-secret \
+       --docker-password=$ARTIFACTORY_PASSWORD ...'</span>
+}</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PATTERNS -->
+  <section class="stage" id="patterns">
+    <div class="stage-head">
+      <div>
+        <div class="eyebrow">Stage 07 · Naming the shape</div>
+        <h2>Patterns underneath the pipeline</h2>
+        <p class="dek">None of this is unusual — but naming it precisely makes it easier to reason about and to onboard someone new onto.</p>
+      </div>
+      <div class="stage-num">07 / 08</div>
+    </div>
+
+    <table class="ptable">
+      <thead>
+        <tr><th>Pattern</th><th>Where it shows up</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="name">Trunk-adjacent GitFlow</td><td>feature → develop → release, fully PR-gated, no direct commits.</td></tr>
+        <tr><td class="name">Branch-conditional pipeline</td><td>One Jenkinsfile validates on PR branches, publishes on <code>develop</code> — same file, different behavior.</td></tr>
+        <tr><td class="name">Job-chaining trigger</td><td>CD Freestyle job fires via "build after other projects," decoupling CI and CD into two Jenkins job types.</td></tr>
+        <tr><td class="name">Immutable artifact promotion</td><td>One Docker image built once; environment behavior injected at deploy time, not baked in per-env rebuilds.</td></tr>
+        <tr><td class="name">Environment-as-job-duplication</td><td>Each environment is its own Freestyle job with hardcoded literals, instead of one parameterized job.</td></tr>
+        <tr><td class="name">Ephemeral build environment</td><td>Fresh venv and wiped workspace every CD run — no shared mutable state between builds.</td></tr>
+        <tr><td class="name">Push-based notification</td><td>Email fires on every deploy rather than requiring someone to poll Jenkins for status.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ROADMAP -->
+  <section class="stage" id="roadmap">
+    <div class="stage-head">
+      <div>
+        <div class="eyebrow">Stage 08 · What to change, in order</div>
+        <h2>Improvement roadmap</h2>
+        <p class="dek">Ordered by impact-to-effort, not by how the sections above happened to appear.</p>
+      </div>
+      <div class="stage-num">08 / 08</div>
+    </div>
+
+    <div class="roadmap">
+      <div class="rstep">
+        <div class="rn">01</div>
+        <div>
+          <h4>Parameterize the CD job, config lives in the repo <span class="rtag p1">high impact</span></h4>
+          <p>Replace one hardcoded Freestyle job per environment with a single job that reads namespace/context from an <code>envs.yaml</code> committed alongside the service. Turns "add an environment" into a one-line, reviewable diff.</p>
+        </div>
+      </div>
+      <div class="rstep">
+        <div class="rn">02</div>
+        <div>
+          <h4>Move CD to pipeline-as-code <span class="rtag p2">medium effort</span></h4>
+          <p>Bring the CD Freestyle logic into a Jenkinsfile (or a shared Pipeline Library step), so deploy-script changes get the same git history and code review as everything else in this guide's CI section.</p>
+        </div>
+      </div>
+      <div class="rstep">
+        <div class="rn">03</div>
+        <div>
+          <h4>Audit credential handling <span class="rtag p1">do first, low effort</span></h4>
+          <p>Confirm every secret in a CD job is bound via Jenkins Credentials Manager, not a literal value in the job config or a var that could get echoed into build logs.</p>
+        </div>
+      </div>
+      <div class="rstep">
+        <div class="rn">04</div>
+        <div>
+          <h4>Add a post-deploy health gate <span class="rtag p2">medium effort</span></h4>
+          <p>End the CD build step with <code>kubectl rollout status</code> (or an HTTP health check) so a green Jenkins build actually means the workload is serving traffic, not just that the script exited cleanly.</p>
+        </div>
+      </div>
+      <div class="rstep">
+        <div class="rn">05</div>
+        <div>
+          <h4>Name a backup approver <span class="rtag p3">low effort</span></h4>
+          <p>Add at least one additional reviewer (or a role-based Bitbucket group) so merges never block entirely on two people's availability.</p>
+        </div>
+      </div>
+      <div class="rstep">
+        <div class="rn">06</div>
+        <div>
+          <h4>Consider a pull-based deploy model longer-term <span class="rtag p3">exploratory</span></h4>
+          <p>Even on-prem, an in-cluster agent watching a manifests repo (Argo CD-style) reduces the blast radius of Jenkins holding cluster-admin-equivalent credentials for every namespace it deploys to.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  Pipeline Schematic — internal field guide · reconcile against live Jenkins job configs each quarter
+</footer>
+
+<script>
+(function(){
+  var dots = Array.prototype.slice.call(document.querySelectorAll('.navdot'));
+  var targets = dots.map(function(d){ return document.querySelector(d.getAttribute('data-target')); });
+  var railFill = document.getElementById('railFill');
+
+  dots.forEach(function(d){
+    d.addEventListener('click', function(){
+      var t = document.querySelector(d.getAttribute('data-target'));
+      if(t) t.scrollIntoView({behavior: 'smooth', block: 'start'});
+    });
+  });
+
+  function onScroll(){
+    var y = window.scrollY + window.innerHeight * 0.35;
+    var activeIdx = 0;
+    for(var i=0;i<targets.length;i++){
+      if(targets[i] && targets[i].offsetTop <= y) activeIdx = i;
+    }
+    dots.forEach(function(d,i){ d.classList.toggle('active', i === activeIdx); });
+
+    var railEl = document.querySelector('.rail');
+    if(dots[activeIdx] && railEl){
+      var railRect = railEl.getBoundingClientRect();
+      var dotRect = dots[activeIdx].getBoundingClientRect();
+      var h = (dotRect.top - railRect.top) + dotRect.height/2;
+      railFill.style.height = Math.max(0,h) + 'px';
+    }
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  window.addEventListener('resize', onScroll);
+  onScroll();
+})();
+</script>
+
+</body>
+</html>
